@@ -4,7 +4,7 @@ object TypeLevelProgramming {
   import scala.reflect.runtime.universe._
 
   //This method is used only to pretty print the type for our demonstration sicne the types we gonna be using will be quite big.
-  def show[T](v:T)(implicit t: TypeTag[T]) = t.toString().replace("com.controlup.typeleve.TypeLevelProgramming.","")
+  def show[T](v:T)(implicit t: TypeTag[T]) = t.toString().replace("com.controlup.typelevel.TypeLevelProgramming.","")
 
   trait Nat // a general representation for any natural number
   class `0` extends Nat // a type representation for a natural number - 0.
@@ -27,7 +27,7 @@ object TypeLevelProgramming {
   //val comparisson : <[`2` , `4`] = ???
   // in scala we can use the infix type notation which is pretty much equivalent
 
-  val comparisson: `2` < `4` = ???
+  //val comparisson: `2` < `4` = ???
 
 
 
@@ -35,6 +35,14 @@ object TypeLevelProgramming {
     //what this means is that for any natural number B a compiler can automatically build on demand
     //an instance of `0` < Successor[B] which we we know is always true since 0 is less than any other natural number!
     implicit def ltBasic[B <:Nat]: <[`0` , Successor[B]] = new <[`0`, Successor[B]] {}
+
+
+    //let's define another implicit to help the compiler validate `1` < `3`. It will use a mathematical induction method.
+    //This method basically means: that for any A,B that extend Nat if you can find an implicit evidence that an instance of
+    // A < B exists, then generate a value of Successor[A] < Successor[B]
+    implicit def inductive[A <: Nat, B <: Nat](implicit lt: A < B): Successor[A] < Successor[B] = new <[Successor[A],Successor[B]] {}
+
+
 
     //let's define a method which we can use to fetch the implicit instance that the compiler automatically generates.
     //what this method actually means to compiler is: if for any A,B which extend Nat there's an
@@ -51,13 +59,27 @@ object TypeLevelProgramming {
   val comp1: `0` < `1` = <[`0`,`1`] // this code compiles which means that the truth value of `0` < `1` is true!
 
 
-  val comp2: `1` < `3` = <[`1`,`3`] // doesn't compile since compiler currently can not validate it
-  // has only one implicit method which can validate that 0 is less than any natural,
-  // but it is not enough to validate any two naturals.
+  // Now the compiler can validate our code.
+  //What happens here is the following:
+  /*
+  1. We are calling the <.apply method.
+  2. Since we do not pass any argument to that method explicitly, it searches for an implicit instance of `1` < `3` that it could use.
+  3. Since the return type of inductive is Successor[A] < Successor[B] (and we know that `1` < `3`  == Successor[0] < Successor[2]) than apply
+     implicitly calls to inductive --> inductive[`1` , `3`]
+  4. In order for inductive to calculate the return type it needs to find an implicit value of `0` < `2` since if it had those,
+     it would be able to calculate the Successor[0] < Successor[2] which is `1` < `3`
+  5. The inductive calls implicitly to ltBasic ==> ltBasic[`1`] (since `2` == Successor[`1`])
+  6. ltBasic produces implicit <[`0`,Successor[`1`]] == <[`0`,`2`]
+   */
+  val comp2: `1` < `3` = <[`1`,`3`]
 
+  // this one doesn't compile which means the compiler has validated that it can not create
+  // instances of this type and thus this expression is wrong
+  val invalidComparison: `3` < `1` = <[`3`,`1`]
+  
   def main(args: Array[String]): Unit = {
     //no matter what argument we will pass to "show" it will print it's type and will ignore the actual value
-    println(show(List(1,2,3))) // pay attention the the entire type signature is carried to the runtime (no raw types)
+    println(show(comp2)) // pay attention the the entire type signature is carried to the runtime (no raw types)
   }
 
 }
