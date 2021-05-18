@@ -69,6 +69,11 @@ object TypeLevelProgramming {
     //the other side is also true: A + 0 = A
     implicit def basciLeft[A <: Nat](implicit lt: `0` < A): +[A,`0`,A] = new +[A,`0`,A]{}
 
+
+    // if A + B = S , then Successor[A] + Successor[B] = Successor[Successor[S]]
+    implicit def inductive [A <: Nat, B <: Nat, S <:Nat](implicit plus: +[A,B,S]): +[Successor[A],Successor[B],Successor[Successor[S]]] =
+      new +[Successor[A],Successor[B],Successor[Successor[S]]] {}
+
     def apply[A <: Nat, B <: Nat, S <: Nat](implicit plus: +[A,B,S]): +[A,B,S] = plus
   }
 
@@ -77,7 +82,20 @@ object TypeLevelProgramming {
   val zero: +[`0`,`0`,`0`] = +[`0`,`0`,`0`] //though intellij shows compilation issue - it lies.
   val two: +[`0`,`2`,`2`] = +[`0`,`2`,`2`]
 
-  //val four: +[`1`,`3`,`4`] = +[`1`,`3`,`4`]
+
+  /*
+  The compiler goes through those steps
+  1. The apply method is called with types `1`,`3`,`4`, so the apply method tries to locate some implicit evidence of type +[`1`,`3`,`4`]
+  2. The return type of the inductive method can be +[Successor[`0`],Successor[`2`], Successor[Successor[`2`]]] and thus apply calls inductive
+  3. The inductive method in order to return +[Successor[`0`],Successor[`2`],Successor[Successor[`2`]]] has to find an implicit evidence for the
+     +[`0`,`2`,`2`]
+  4. It can find such evidence because of basicRight in scope, so it calls the basicRight and returns it's values.
+   */
+  val four: +[`1`,`3`,`4`] = +[`1`,`3`,`4`]
+
+  //But if we write an invalid statement
+  //val invalidFour: +[`2`,`3`,`4`] = +[`2`,`3`,`4`]
+
 
   def main(args: Array[String]): Unit = {
     //no matter what argument we will pass to "show" it will print it's type and will ignore the actual value
