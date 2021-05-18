@@ -50,8 +50,34 @@ object TypeLevelProgramming {
   5. lteBasic[`0`]:<=[`0`,`0`] is able to return the type <=[`0`,`0`] since `0` extends Nat (and thus fulfills the type constraint)
    */
   val validTest: `1` <= `1` = <=[`1`,`1`]
-  val invalitTest: `5` <= `2` = <=[`5`,`2`]// that on the other hand does not compile and thus proves the expression is wrong
+  //val invalitTest: `5` <= `2` = <=[`5`,`2`]// that on the other hand does not compile and thus proves the expression is wrong
 
+
+  //Now we would like to 'add numbers' as types.
+  //The idea is if the compiler can create automatically instances of type + , that should prove that A + B = S truth statement
+  // , is true.
+  trait +[A <: Nat, B<:Nat, S<:Nat]
+  object + {
+    //We know that  0 + 0 equals 0. ==> that means the compiler should automatically have to be able to create a +[`0`,`0`,'0`]
+    implicit val zero: +[`0`,`0`,`0`] = new +[`0`,`0`,`0`] {}
+
+    //for every A <: Nat && A > 0, we have A + 0 = A and 0 + A = A (commutativity) ==> we will implement those axioms as an implicit methods
+    //if we have some A which is a natural number and the compiler can find an
+    // implicit evidence that 0 < A, than it is safe to create +[`0`,A,A] instance
+    implicit def basicRight[A <: Nat](implicit lt: `0` < A): +[`0`,A,A] = new +[`0`,A,A] {}
+
+    //the other side is also true: A + 0 = A
+    implicit def basciLeft[A <: Nat](implicit lt: `0` < A): +[A,`0`,A] = new +[A,`0`,A]{}
+
+    def apply[A <: Nat, B <: Nat, S <: Nat](implicit plus: +[A,B,S]): +[A,B,S] = plus
+  }
+
+  //All we defined till far is enough to already prove the following:
+  //the bellow two expressions have been validated by teh compiler and thus are proved to be correct.
+  val zero: +[`0`,`0`,`0`] = +[`0`,`0`,`0`] //though intellij shows compilation issue - it lies.
+  val two: +[`0`,`2`,`2`] = +[`0`,`2`,`2`]
+
+  //val four: +[`1`,`3`,`4`] = +[`1`,`3`,`4`]
 
   def main(args: Array[String]): Unit = {
     //no matter what argument we will pass to "show" it will print it's type and will ignore the actual value
