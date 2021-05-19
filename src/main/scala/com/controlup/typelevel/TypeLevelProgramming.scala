@@ -4,7 +4,7 @@ object TypeLevelProgramming {
   import scala.reflect.runtime.universe._
 
   //This method is used only to pretty print the type for our demonstration sicne the types we gonna be using will be quite big.
-  def show[T](v:T)(implicit t: TypeTag[T]) = t.toString().replace("com.controlup.typelevel.TypeLevelProgramming.","")
+  def show[T](v:T)(implicit t: TypeTag[T]) = t.tpe.toString().replace("com.controlup.typelevel.TypeLevelProgramming.","")
 
   trait Nat // a general representation for any natural number
   class `0` extends Nat // a type representation for a natural number - 0.
@@ -64,7 +64,8 @@ object TypeLevelProgramming {
 
     //Let's define a type alias as following:
     //So we can see that the type Plus (which is parametrized by A,B,S) is basically defined using the + trait.
-    //The trick here to make the compiler automatically match Result type member with the S type argument.
+    //We can say that "Plus" is a refined (less abstract) "+" type
+    //The trick here is to make the compiler automatically match Result type member with the S type argument.
     type Plus[A <: Nat, B <: Nat, S <: Nat] = +[A,B] {type Result = S}
 
     //We will redefine the zero type using the new Plus type.
@@ -82,20 +83,34 @@ object TypeLevelProgramming {
     implicit def inductive [A <: Nat, B <: Nat, S <:Nat](implicit plus: Plus[A,B,S]): Plus[Successor[A],Successor[B],Successor[Successor[S]]] =
       new +[Successor[A],Successor[B]] {type Result = Successor[Successor[S]]}
 
-    //we gonna require to have an implicit +[A,B] and we will return that instance
-    def apply[A <: Nat, B <: Nat, S <: Nat](implicit plus: +[A,B]): +[A,B] = plus
+    //we will change the apply method a bit so that the compiler will expose the result type to us
+    //We are modifying the return type to be of type "Plus" where the S parameter type is
+    //the type from the Result type from the + argument
+    //Previously we have returned explicitly the +[A,B].
+    //Although Plus[A,B,S] is an alias for +[A,B]{type Result = S}, they are not defined the same way.
+    //"Plus" type is parametrized by 3 types while "+" is parametrized only by 2 types, and the third one is it's type member.
+    //"Type members" in scala are just as field members, they belong to the instances and not to the class/trait itself
+    // As such, they are not part of the the type definition, and thus were not printed to the console.
+    // We can think of "type members" as some kind of an abstract type definitions that behave similarly to abstract methods -
+    // they are not part of the type definition , but they have to be defined when we want to instantiate the type.
+    //On the other hand the "Plus" type has 3 parameters and all of them part of it's type definition and thus printed to the console
+    def apply[A <: Nat, B <: Nat](implicit plus: +[A,B]): Plus[A,B,plus.Result] = plus
   }
 
-    //Let's explicitly call the apply method this time without specifying the types! (compiler should be able to infer those)
-    //The compiler is been able to validate our result, but we can not really see the result type
-    val zero: +[`0`,`0`] = +.apply
-    val two: +[`0`,`2`] = +.apply
-    val four: +[`1`,`3`] = +.apply
+    //This time let us not validate the result type by specifying it explicitly,
+    // but let the compiler infer it for us.
+    //By inferring the result type for us, compiler is basically computing the result!
+    val zero  = +[`0`,`0`]
+    val two  = +[`0`,`2`]
+    val four  = +[`1`,`3`]
 
 
   def main(args: Array[String]): Unit = {
-    //see that we don't see the result type.
+
+    //let's now print the result of the following apply method
+    //we can see that the compiler is automatically computing the result for us
     println(show(four))
+
   }
 
 }
