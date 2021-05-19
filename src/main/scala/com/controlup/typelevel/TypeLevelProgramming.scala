@@ -53,53 +53,49 @@ object TypeLevelProgramming {
   //val invalitTest: `5` <= `2` = <=[`5`,`2`]// that on the other hand does not compile and thus proves the expression is wrong
 
 
-  //Now we would like to 'add numbers' as types.
-  //The idea is if the compiler can create automatically instances of type + , that should prove that A + B = S truth statement
-  // , is true.
-  trait +[A <: Nat, B<:Nat, S<:Nat]
-  object + {
-    //We know that  0 + 0 equals 0. ==> that means the compiler should automatically have to be able to create a +[`0`,`0`,'0`]
-    implicit val zero: +[`0`,`0`,`0`] = new +[`0`,`0`,`0`] {}
-
-    //for every A <: Nat && A > 0, we have A + 0 = A and 0 + A = A (commutativity) ==> we will implement those axioms as an implicit methods
-    //if we have some A which is a natural number and the compiler can find an
-    // implicit evidence that 0 < A, than it is safe to create +[`0`,A,A] instance
-    implicit def basicRight[A <: Nat](implicit lt: `0` < A): +[`0`,A,A] = new +[`0`,A,A] {}
-
-    //the other side is also true: A + 0 = A
-    implicit def basciLeft[A <: Nat](implicit lt: `0` < A): +[A,`0`,A] = new +[A,`0`,A]{}
-
-
-    // if A + B = S , then Successor[A] + Successor[B] = Successor[Successor[S]]
-    implicit def inductive [A <: Nat, B <: Nat, S <:Nat](implicit plus: +[A,B,S]): +[Successor[A],Successor[B],Successor[Successor[S]]] =
-      new +[Successor[A],Successor[B],Successor[Successor[S]]] {}
-
-    def apply[A <: Nat, B <: Nat, S <: Nat](implicit plus: +[A,B,S]): +[A,B,S] = plus
+  //Let's modify the definition of a + type.
+  //instead of the S type argument we gonna add an abstract type member - that would be our result symbolizing type
+  trait +[A <: Nat, B<:Nat] {
+    type Result <: Nat
   }
 
-  //All we defined till far is enough to already prove the following:
-  //the bellow two expressions have been validated by teh compiler and thus are proved to be correct.
-  val zero: +[`0`,`0`,`0`] = +[`0`,`0`,`0`] //though intellij shows compilation issue - it lies.
-  val two: +[`0`,`2`,`2`] = +[`0`,`2`,`2`]
+
+  object + {
+
+    //Let's define a type alias as following:
+    //So we can see that the type Plus (which is parametrized by A,B,S) is basically defined using the + trait.
+    //The trick here to make the compiler automatically match Result type member with the S type argument.
+    type Plus[A <: Nat, B <: Nat, S <: Nat] = +[A,B] {type Result = S}
+
+    //We will redefine the zero type using the new Plus type.
+    //So because "Plus" type is defined via "+" type, in order to instantiate it we would have to create members of the "+" type.
+    implicit val zero: Plus[`0`,`0`,`0`] = new +[`0`,`0`] { type Result = `0`}
+
+    //redefining the new basicRight using the new "Plus" type
+    implicit def basicRight[A <: Nat](implicit lt: `0` < A): Plus[`0`,A,A] = new +[`0`,A] {type Result = A}
+
+    //redefining the new basicLeft using the new "Plus" type
+    implicit def basciLeft[A <: Nat](implicit lt: `0` < A): Plus[A,`0`,A] = new +[A,`0`]{type Result = A}
 
 
-  /*
-  The compiler goes through those steps
-  1. The apply method is called with types `1`,`3`,`4`, so the apply method tries to locate some implicit evidence of type +[`1`,`3`,`4`]
-  2. The return type of the inductive method can be +[Successor[`0`],Successor[`2`], Successor[Successor[`2`]]] and thus apply calls inductive
-  3. The inductive method in order to return +[Successor[`0`],Successor[`2`],Successor[Successor[`2`]]] has to find an implicit evidence for the
-     +[`0`,`2`,`2`]
-  4. It can find such evidence because of basicRight in scope, so it calls the basicRight and returns it's values.
-   */
-  val four: +[`1`,`3`,`4`] = +[`1`,`3`,`4`]
+    // redefining the inductive step to use the new "Plus" type instead of "+"
+    implicit def inductive [A <: Nat, B <: Nat, S <:Nat](implicit plus: Plus[A,B,S]): Plus[Successor[A],Successor[B],Successor[Successor[S]]] =
+      new +[Successor[A],Successor[B]] {type Result = Successor[Successor[S]]}
 
-  //But if we write an invalid statement
-  //val invalidFour: +[`2`,`3`,`4`] = +[`2`,`3`,`4`]
+    //we gonna require to have an implicit +[A,B] and we will return that instance
+    def apply[A <: Nat, B <: Nat, S <: Nat](implicit plus: +[A,B]): +[A,B] = plus
+  }
+
+    //Let's explicitly call the apply method this time without specifying the types! (compiler should be able to infer those)
+    //The compiler is been able to validate our result, but we can not really see the result type
+    val zero: +[`0`,`0`] = +.apply
+    val two: +[`0`,`2`] = +.apply
+    val four: +[`1`,`3`] = +.apply
 
 
   def main(args: Array[String]): Unit = {
-    //no matter what argument we will pass to "show" it will print it's type and will ignore the actual value
-    println(show(validTest)) // pay attention the the entire type signature is carried to the runtime (no raw types)
+    //see that we don't see the result type.
+    println(show(four))
   }
 
 }
